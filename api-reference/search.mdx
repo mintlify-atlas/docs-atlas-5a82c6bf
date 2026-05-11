@@ -1,0 +1,72 @@
+---
+title: "GET /search/ — general meta-search endpoint"
+description: "Search the web using DuckDuckGo's DDGS library and receive a JSON array of result URLs. Engine selection is automatic; use limit to control result count."
+---
+
+The `/search/` endpoint is the primary general-purpose search endpoint. It accepts a query string and a result limit, distributes the request across available meta-search backends using DuckDuckGo's DDGS library, and returns a JSON array of result URLs. The engine selection is automatic — you do not choose which engine handles the request. For engine-specific targeting, use [`/search/engine`](/api-reference/search-engine) instead.
+
+<Note>
+  If the underlying search engine returns fewer results than the requested `limit`, the response array will be shorter. This is normal behavior from the upstream DDGS library.
+</Note>
+
+## Request
+
+```
+GET /search/?query={query}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The search query string. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of URLs to return. The response may contain fewer results if the upstream engine returns less than the requested amount.
+</ParamField>
+
+## Response
+
+Returns a JSON array of URL strings on success.
+
+<ResponseField name="[*]" type="string">
+  A result URL from the search engine. Each element is a fully-qualified URL string.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/search/?query=large+language+models&limit=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/search/",
+    params={"query": "large language models", "limit": 5}
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://en.wikipedia.org/wiki/Large_language_model",
+  "https://huggingface.co/blog/large-language-models",
+  "https://arxiv.org/abs/2303.08774",
+  "https://openai.com/research/gpt-4",
+  "https://www.deepmind.com/blog/language-modelling-at-scale"
+]
+```
+
+## Error response
+
+When the search fails after the maximum number of retries, a `400` status is returned with an error message.
+
+```json 400
+{ "error": "Search failed after 7 attempts" }
+```

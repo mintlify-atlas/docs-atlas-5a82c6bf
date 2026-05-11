@@ -1,0 +1,80 @@
+---
+title: "SearchAPI REST endpoints — complete reference"
+description: "Complete reference for all SearchAPI GET endpoints. No authentication required. Responses are JSON arrays of URLs or DOIs. Default base URL is localhost:8000."
+---
+
+SearchAPI exposes a set of HTTP endpoints built on FastAPI, each designed for a specific content type. Every endpoint accepts query parameters in the URL, requires no authentication, and returns a JSON array of URLs (or DOIs for the paper search endpoint). The service is self-hosted — deploy it locally or on any cloud provider and call it at `http://localhost:8000` by default.
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+If you have deployed SearchAPI to a remote server or a cloud platform, replace `localhost:8000` with your host and port. See the [deployment guide](/deployment) for cloud and container options.
+
+## Request format
+
+All endpoints use `GET`. Parameters are passed as URL query string key-value pairs — there is no request body.
+
+```bash
+GET /search/?query=machine+learning&limit=10
+```
+
+## Authentication
+
+No authentication is required. All endpoints are open by default. CORS is enabled for all origins, so you can call the API from any frontend, script, or agent.
+
+## Response format
+
+All endpoints return `application/json`. Successful responses return HTTP `200` with a JSON array.
+
+```json
+[
+  "https://example.com/page-one",
+  "https://example.com/page-two"
+]
+```
+
+The paper search endpoint (`/search/paper`) returns an array of DOI strings instead of URLs:
+
+```json
+[
+  "10.1145/3495243.3560527",
+  "10.1038/s41586-021-03819-2"
+]
+```
+
+## Error responses
+
+| Status | When it occurs |
+|--------|---------------|
+| `400`  | Bad request or search engine error on `/search/`, `/search/engine`, `/search/paper` |
+| `500`  | Internal error on `/searchpdfs/`, `/search/specific/`, `/repositories/`, `/wiki/`, `/books/`, `/news/`, `/useragent/` |
+
+Error response shape:
+
+```json
+{ "error": "message describing what went wrong" }
+```
+
+## MCP server
+
+SearchAPI ships with a built-in MCP server mounted at `/mcp`. All endpoints are available as MCP tools, letting AI assistants such as Claude call them directly without writing code. See the [MCP server guide](/guides/mcp-server) for setup instructions.
+
+## All endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | [`/search/`](/api-reference/search) | General web search across multiple engines |
+| `GET` | [`/search/engine`](/api-reference/search-engine) | Search using a specific engine (Bing, Google, DuckDuckGo, etc.) |
+| `GET` | [`/search/paper`](/api-reference/search-papers) | Academic paper search via Crossref, returns DOIs |
+| `GET` | [`/books/`](/api-reference/search-books) | Book search, returns URLs |
+| `GET` | [`/news/`](/api-reference/search-news) | News article search, returns URLs |
+| `GET` | [`/searchpdfs/`](/api-reference/search-pdfs) | Search for PDF documents, returns direct PDF URLs |
+| `GET` | [`/search/specific/`](/api-reference/search-filetype) | Search for files by filetype (pdf, docx, pptx, etc.) |
+| `GET` | [`/repositories/`](/api-reference/search-repositories) | Search GitHub and GitLab repositories |
+| `GET` | [`/wiki/`](/api-reference/search-wiki) | Search across Wikipedia and Wikimedia sites |
+| `GET` | [`/`](/api-reference/utilities) | Service status and MCP server path |
+| `GET` | [`/health`](/api-reference/utilities) | Health check endpoint |
+| `GET` | [`/useragent/`](/api-reference/utilities) | Random user agent string |

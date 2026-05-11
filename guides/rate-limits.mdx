@@ -1,0 +1,145 @@
+---
+title: "Avoid rate limits and handle SearchAPI errors"
+description: "SearchAPI retries upstream failures up to 7 times automatically. Learn how to avoid engine blocks and write resilient clients for high-volume collection."
+icon: "shield"
+---
+
+SearchAPI does not impose its own rate limits, but the upstream search engines it queries — primarily DuckDuckGo's DDGS library — do. When a search engine returns an error or blocks a request, SearchAPI retries automatically. Understanding how that retry mechanism works, and how to configure your client to stay within engine limits, will help you run high-volume collection without interruption.
+
+## How SearchAPI handles retries
+
+Every search function retries the upstream request up to 7 times before raising an error. Each failed attempt is logged, and the next attempt begins immediately. If all 7 attempts fail, SearchAPI raises a `RuntimeError` and returns a `500 Internal Server Error` to your client.
+
+```python
+# From searchweb.py — the retry loop used by all search functions
+async def search(query: str, max_results: int = 10):
+    max_retries = 7
+    ddgs = DDGS(timeout=100)
+    for attempt in range(max_retries):
+        try:
+            results = ddgs.text(query, max_results=max_results)
+            res = []
+            for result in results:
+                res.append(result.get("href", "No URL"))
+            return res
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed with error: {e}")
+            if attempt < max_retries - 1:
+                print("Retrying...")
+                continue
+            else:
+                raise RuntimeError(f"Search failed after {max_retries} attempts")
+```
+
+<Note>
+  The 7-retry limit applies to all search endpoints — web, papers, PDFs, books, news, filetypes, repositories, and wiki. Each individual attempt uses a 100-second timeout before it is counted as a failure.
+</Note>
+
+## Why upstream rate limiting happens
+
+SearchAPI uses DuckDuckGo's DDGS library as its primary meta-search engine. When you send many requests in quick succession, DuckDuckGo may throttle or temporarily block the search session. This shows up as a `RuntimeError` from the DDGS library, which SearchAPI catches and retries.
+
+The `/search/engine` endpoint (which targets a specific engine by name) carries additional risk: engines like Google monitor for automated traffic and are more likely to return blocks or CAPTCHAs when queried directly.
+
+<Warning>
+  Using `GET /search/engine` with engines like `google` increases the chance of triggering rate limiting or anti-bot measures. For bulk collection, use `GET /search/` instead.
+</Warning>
+
+## Engine rotation on the general endpoint
+
+The `GET /search/` endpoint does not target a single engine. It randomly selects from the available engines on each request, distributing load across multiple providers. This makes it less likely that any single engine will flag your traffic.
+
+<Tip>
+  Prefer `GET /search/` over `GET /search/engine` for large-scale collection. Random engine selection reduces the fingerprint of your requests and keeps load distributed.
+</Tip>
+
+## Mitigation strategies
+
+### Add a politeness delay between requests
+
+The most effective way to avoid upstream rate limits is to pause between successive API calls. A delay of 1–3 seconds is sufficient for most use cases; increase it if you are collecting thousands of results.
+
+```python politeness_delay.py
+import requests
+import time
+
+BASE_URL = "http://localhost:8000"
+QUERIES = ["machine learning", "deep learning", "neural networks"]
+
+for query in QUERIES:
+    response = requests.get(
+        f"{BASE_URL}/search/",
+        params={"query": query, "limit": 10},
+        timeout=30,
+    )
+    print(f"'{query}': {len(response.json())} results")
+    time.sleep(2)  # 2-second politeness delay between requests
+```
+
+### Route through a proxy, VPN, or Tor
+
+If you are hitting rate limits despite politeness delays, routing your SearchAPI instance through a proxy, VPN, or Tor distributes your requests across different IP addresses. Configure this at the network or container level, not in the API client.
+
+```bash
+# Example: run SearchAPI container behind a SOCKS5 proxy
+docker run -e HTTP_PROXY=socks5://proxy-host:1080 -p 8000:8000 pratyay360/searchapi
+```
+
+<Note>
+  Using Tor will significantly increase response latency. Use it only when other mitigation strategies are insufficient.
+</Note>
+
+## What errors look like
+
+SearchAPI returns two error shapes depending on where the failure occurs.
+
+**Client error (400 Bad Request)** — returned when a required parameter is missing or invalid:
+
+```json
+{
+  "error": "query parameter is required"
+}
+```
+
+**Server error (500 Internal Server Error)** — returned when all 7 retry attempts fail:
+
+```json
+{
+  "error": "Search failed after 7 attempts"
+}
+```
+
+Handle both in your client code:
+
+```python error_handling.py
+import requests
+
+response = requests.get(
+    "http://localhost:8000/search/",
+    params={"query": "transformer architecture", "limit": 10},
+    timeout=30,
+)
+
+if response.status_code == 400:
+    print(f"Bad request: {response.json()}")
+elif response.status_code == 500:
+    print(f"Server error after retries: {response.json()}")
+elif response.ok:
+    urls = response.json()
+    print(f"Got {len(urls)} URLs")
+else:
+    print(f"Unexpected status {response.status_code}: {response.text}")
+```
+
+## Best practices for high-volume collection
+
+- **Use `GET /search/`** instead of `GET /search/engine` for bulk queries.
+- **Add a delay of at least 1–2 seconds** between successive requests.
+- **Spread queries across time** — batching hundreds of requests in minutes is more likely to trigger blocks than spreading them over hours.
+- **Monitor for 500 errors** — a pattern of 500 responses indicates persistent upstream blocking. Add exponential backoff or switch to a proxy.
+- **Rotate query phrasing** — subtle variation in query wording reduces the chance that a session is flagged as a scraper.
+- **Use multiple SearchAPI instances behind different IPs** for very high-volume workloads.
+
+<Tip>
+  If you are seeing consistent `500` errors despite politeness delays, try routing your SearchAPI instance through a VPN or adding a proxy layer. The upstream block is likely IP-based.
+</Tip>

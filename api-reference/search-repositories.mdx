@@ -1,0 +1,75 @@
+---
+title: "GET /repositories/ — find GitHub and GitLab repos"
+description: "Search GitHub and GitLab for code repositories simultaneously and receive a combined URL array. Returns up to 2× limit results across both platforms."
+---
+
+The `/repositories/` endpoint searches for code repositories across GitHub and GitLab in a single request. Internally, it runs two separate searches — one scoped to `site:github.com` and one to `site:gitlab.com` — and concatenates the results into a single array. This makes it convenient for discovering open-source projects without having to query each platform separately.
+
+<Note>
+  Because the endpoint runs two searches internally, the response can contain up to **2 × limit** results — `limit` URLs from GitHub and `limit` URLs from GitLab. The actual count depends on how many results each search returns.
+</Note>
+
+## Request
+
+```
+GET /repositories/?query={query}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The repository search query. Use project names, technology names, programming languages, or topic keywords. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of results to return **per platform**. The total response may contain up to `2 × limit` URLs.
+</ParamField>
+
+## Response
+
+Returns a JSON array of URL strings. GitHub results appear first, followed by GitLab results.
+
+<ResponseField name="[*]" type="string">
+  A URL to a repository page on GitHub (`github.com/...`) or GitLab (`gitlab.com/...`).
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/repositories/?query=python+web+scraper&limit=3"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/repositories/",
+    params={"query": "python web scraper", "limit": 3}
+)
+repos = response.json()
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://github.com/scrapy/scrapy",
+  "https://github.com/psf/requests-html",
+  "https://github.com/MechanicalSoup/MechanicalSoup",
+  "https://gitlab.com/pgjones/quart",
+  "https://gitlab.com/droberin/scrapy-plugins",
+  "https://gitlab.com/example/web-spider"
+]
+```
+
+## Error response
+
+```json 500
+{ "error": "Repository search failed" }
+```
+
+## Use case
+
+This endpoint is useful for building datasets of open-source code repositories. Pair it with the GitHub API or a git clone script to retrieve repository contents, README files, or source code for training code-focused LLMs.

@@ -1,23 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "SearchAPI",
+  "projectType": "api-service",
+  "projectName": "SearchAPI",
+  "projectDescription": "A deployable REST API built with FastAPI that enables programmatic web, research paper, PDF, book, news, and repository searches — designed for LLM dataset generation and accessible as an MCP server for AI assistants.",
   "theme": "luma",
-  "colors": {
-    "primary": "#2563EB",
-    "light": "#DBEAFE",
-    "dark": "#1E3A8A"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/pratyay360/searchapi"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/pratyay360/searchapi"
-    }
-  },
+  "primaryColor": "#2563EB",
+  "lightColor": "#DBEAFE",
+  "darkColor": "#1E3A8A",
   "navigation": {
     "tabs": [
       {
@@ -68,5 +56,31 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Meta-search across multiple engines (Bing, Brave, DuckDuckGo, Google, Mojeek, Yandex, Yahoo, Wikipedia)",
+    "Academic paper search via Crossref returning DOIs",
+    "Book search via Anna's Archive",
+    "News article search",
+    "PDF and filetype-specific search",
+    "GitHub and GitLab repository search",
+    "Wikipedia and Wikimedia aggregated search",
+    "MCP (Model Context Protocol) server for AI assistant integration",
+    "Docker/Podman deployable with one command",
+    "One-click deploy to Render"
+  ],
+  "publicApiSurface": [
+    "GET /",
+    "GET /health",
+    "GET /search/",
+    "GET /search/engine",
+    "GET /search/paper",
+    "GET /searchpdfs/",
+    "GET /search/specific/",
+    "GET /repositories/",
+    "GET /wiki/",
+    "GET /books/",
+    "GET /news/",
+    "GET /useragent/"
+  ]
 }

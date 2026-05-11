@@ -1,0 +1,92 @@
+---
+title: "GET /wiki/ — aggregate search across Wikimedia sites"
+description: "Search across six Wikimedia sites simultaneously and receive a merged array of URLs covering Wikipedia, Wikibooks, Wiktionary, Wikiquote, and Wikisource."
+---
+
+The `/wiki/` endpoint aggregates results from six wiki sites in a single request. Internally, it runs six separate searches — one per site — and merges all results into a single array. This gives you broad encyclopedic coverage without making multiple API calls. The sites covered are Wikipedia, Wikibooks, Wiktionary, Grokipedia, Wikiquote, and Wikisource.
+
+<Note>
+  Because the endpoint runs six internal searches, the response can contain up to **6 × limit** URLs. The actual count may be lower if some sites return fewer results than requested.
+</Note>
+
+## Request
+
+```
+GET /wiki/?query={query}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The search query. Works best with specific topic names, concepts, or terms. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of results to return **per site**. The total response may contain up to `6 × limit` URLs.
+</ParamField>
+
+## Sources searched
+
+| Site | Content type |
+|------|-------------|
+| `wikipedia.org` | Encyclopedic articles |
+| `wikibooks.org` | Open-content textbooks |
+| `wiktionary.org` | Dictionary and thesaurus |
+| `grokipedia.com` | Wiki-style reference |
+| `wikiquote.org` | Quotations from notable figures |
+| `wikisource.org` | Public domain source texts |
+
+## Response
+
+Returns a JSON array of URL strings. Results from each site appear in the order listed above, concatenated together.
+
+<ResponseField name="[*]" type="string">
+  A URL to a page on one of the six wiki sites.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/wiki/?query=reinforcement+learning&limit=2"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/wiki/",
+    params={"query": "reinforcement learning", "limit": 2}
+)
+wiki_urls = response.json()
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://en.wikipedia.org/wiki/Reinforcement_learning",
+  "https://en.wikipedia.org/wiki/Q-learning",
+  "https://en.wikibooks.org/wiki/Reinforcement_Learning",
+  "https://en.wikibooks.org/wiki/Artificial_Intelligence",
+  "https://en.wiktionary.org/wiki/reinforcement",
+  "https://en.wiktionary.org/wiki/reward",
+  "https://www.grokipedia.com/reinforcement-learning",
+  "https://www.grokipedia.com/machine-learning",
+  "https://en.wikiquote.org/wiki/Artificial_intelligence",
+  "https://en.wikiquote.org/wiki/Alan_Turing",
+  "https://en.wikisource.org/wiki/Artificial_Intelligence_references",
+  "https://en.wikisource.org/wiki/Computing_Machinery_and_Intelligence"
+]
+```
+
+## Error response
+
+```json 500
+{ "error": "Wiki search failed" }
+```
+
+## Use case
+
+The `/wiki/` endpoint is well-suited for building encyclopedic knowledge datasets. The combination of Wikipedia (facts), Wikibooks (structured learning), Wiktionary (language), Wikiquote (quotations), and Wikisource (primary texts) gives broad coverage of human knowledge in a single call.

@@ -1,0 +1,76 @@
+---
+title: "GET /searchpdfs/ — find PDF documents on the web"
+description: "Search for publicly accessible PDF files and receive an array of direct PDF URLs. The filetype:pdf operator is added automatically to your query."
+---
+
+The `/searchpdfs/` endpoint searches for publicly accessible PDF files and returns an array of direct PDF URLs. It works by prepending `filetype:pdf` to your query before passing it to the underlying DDGS search, so you do not need to include the operator yourself. This is useful for collecting PDF datasets — research reports, whitepapers, textbook chapters, technical manuals, and similar documents.
+
+<Note>
+  The query parameter for this endpoint is named **`limits`** (with a trailing `s`), not `limit`. Using the wrong parameter name will cause the request to fail.
+</Note>
+
+## Request
+
+```
+GET /searchpdfs/?query={query}&limits={limits}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The search query. Do not include `filetype:pdf` — this is added automatically. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="limits" type="integer" required>
+  Maximum number of PDF URLs to return. Note the parameter name is `limits`, not `limit`.
+</ParamField>
+
+## Response
+
+Returns a JSON array of URL strings pointing to PDF files on success.
+
+<ResponseField name="[*]" type="string">
+  A direct URL to a PDF document. URLs typically end with `.pdf` but may include query strings or redirects.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/searchpdfs/?query=machine+learning+survey&limits=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/searchpdfs/",
+    params={"query": "machine learning survey", "limits": 5}
+)
+pdf_urls = response.json()
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://arxiv.org/pdf/1811.12560.pdf",
+  "https://jmlr.org/papers/volume17/15-538/15-538.pdf",
+  "https://www.cs.toronto.edu/~rsalakhu/papers/science_rbm.pdf",
+  "https://proceedings.neurips.cc/paper/2017/file/3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf",
+  "https://www.deeplearningbook.org/contents/intro.html"
+]
+```
+
+## Error response
+
+```json 500
+{ "error": "PDF search failed" }
+```
+
+## Use case
+
+Combine this endpoint with a document parser to build a corpus of PDF text for LLM pre-training or fine-tuning. For example, collect 100 PDFs on a topic, download them, extract text with `pdfminer` or `pypdf`, and write the results to JSONL.
+
+For other filetypes (DOCX, PPTX, XLSX, and more), use the [`/search/specific/`](/api-reference/search-filetype) endpoint instead.

@@ -1,0 +1,86 @@
+---
+title: "GET /search/paper — find academic papers by DOI"
+description: "Search academic literature via the Crossref index and receive an array of DOI strings that resolve to full paper metadata or publisher landing pages."
+---
+
+The `/search/paper` endpoint searches academic literature via the [Crossref](https://www.crossref.org/) API — not DuckDuckGo — and returns an array of DOI (Digital Object Identifier) strings. DOIs are persistent identifiers for scholarly works, including journal articles, conference papers, preprints, and books. Unlike the other search endpoints that return fully-qualified URLs, this endpoint returns bare DOI strings that you resolve yourself.
+
+<Note>
+  The default result limit for this endpoint is **5**, defined in the underlying `searchPaper` function. If you need more results, pass a higher `limit` value explicitly.
+</Note>
+
+## Request
+
+```
+GET /search/paper?query={query}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The academic search query. Works best with descriptive terms, author names, or paper titles rather than short keywords.
+</ParamField>
+
+<ParamField query="limit" type="integer" required default="5">
+  Maximum number of DOIs to return. Defaults to 5 in the underlying implementation.
+</ParamField>
+
+## Response
+
+Returns a JSON array of DOI strings on success.
+
+<ResponseField name="[*]" type="string">
+  A DOI string identifying an academic work. Format: `{registrant-prefix}/{suffix}`, for example `10.1145/3495243.3560527`.
+</ResponseField>
+
+## Resolving DOIs
+
+To get the full paper URL or metadata from a DOI, prepend `https://doi.org/`:
+
+```
+https://doi.org/10.1145/3495243.3560527
+```
+
+This redirects to the publisher's landing page. For machine-readable metadata, query the Crossref REST API directly:
+
+```
+https://api.crossref.org/works/10.1145/3495243.3560527
+```
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/search/paper?query=attention+mechanism+neural+networks&limit=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/search/paper",
+    params={"query": "attention mechanism neural networks", "limit": 5}
+)
+dois = response.json()
+# Resolve to URLs
+urls = [f"https://doi.org/{doi}" for doi in dois]
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "10.1145/3495243.3560527",
+  "10.1038/s41586-021-03819-2",
+  "10.1162/neco.1997.9.8.1735",
+  "10.48550/arXiv.1706.03762",
+  "10.18653/v1/2020.acl-main.443"
+]
+```
+
+## Error response
+
+```json 400
+{ "error": "Crossref API request failed" }
+```

@@ -1,0 +1,153 @@
+---
+title: "Use SearchAPI as an MCP server for AI assistants"
+description: "SearchAPI exposes all nine search tools as MCP tools at /mcp via fastapi-mcp. Connect Claude Desktop, Cursor, or VS Code Copilot in a few steps."
+icon: "robot"
+---
+
+SearchAPI ships with a built-in MCP (Model Context Protocol) server powered by [fastapi-mcp](https://github.com/tadata-org/fastapi-mcp). Every FastAPI route is automatically exposed as an MCP tool at the `/mcp` endpoint — no additional configuration is required on the server side. When you run SearchAPI, the MCP server is ready at `http://localhost:8000/mcp`, and the root endpoint confirms this with `{"mcp server": "/mcp"}`.
+
+## Available MCP tools
+
+All nine search tools are exposed automatically from the FastAPI routes.
+
+| Tool | Description |
+|---|---|
+| `web_search` | General web search — returns a list of URLs |
+| `search_by_engine` | Search via a specific engine: bing, brave, duckduckgo, google, mojeek, yandex, yahoo, wikipedia |
+| `search_papers` | Search academic papers via Crossref — returns DOIs |
+| `search_books` | Search for books — returns URLs |
+| `search_news` | Search news articles — returns URLs |
+| `search_pdfs` | Search for PDF documents — returns URLs |
+| `search_filetype` | Search for files of a given type (pdf, docx, pptx, and more) |
+| `search_repositories` | Search GitHub and GitLab repositories — returns URLs |
+| `search_wiki` | Search Wikipedia and Wikimedia sites — returns URLs |
+
+## Connect a client
+
+Choose the client you want to connect to SearchAPI.
+
+<Tabs>
+  <Tab title="Claude Desktop">
+    Claude Desktop supports MCP servers over HTTP (for deployed instances) and via stdio (for local scripts).
+
+    <Steps>
+      <Step title="Open the Claude Desktop configuration file">
+        Find and open your `claude_desktop_config.json` file:
+
+        - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+        - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+      </Step>
+
+      <Step title="Add the SearchAPI MCP server">
+        Add the following entry to the `mcpServers` object, pointing to the `/mcp` endpoint of your running SearchAPI instance.
+
+        ```json claude_desktop_config.json
+        {
+          "mcpServers": {
+            "searchapi": {
+              "type": "http",
+              "url": "http://localhost:8000/mcp"
+            }
+          }
+        }
+        ```
+
+        Replace `http://localhost:8000` with the base URL of your deployed instance if it is not running locally.
+      </Step>
+
+      <Step title="Restart Claude Desktop">
+        Save the config file and restart Claude Desktop. The SearchAPI tools will appear in the MCP tools panel.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Cursor">
+    Cursor supports MCP servers via its settings panel.
+
+    <Steps>
+      <Step title="Open Cursor settings">
+        Go to **Cursor** → **Settings** → **MCP** (or press `Cmd+Shift+J` on macOS, `Ctrl+Shift+J` on Windows/Linux).
+      </Step>
+
+      <Step title="Add a new MCP server">
+        Click **Add MCP Server** and fill in the fields:
+
+        - **Name**: `searchapi`
+        - **Type**: `http`
+        - **URL**: `http://localhost:8000/mcp`
+
+        Or edit your `~/.cursor/mcp.json` file directly:
+
+        ```json mcp.json
+        {
+          "mcpServers": {
+            "searchapi": {
+              "type": "http",
+              "url": "http://localhost:8000/mcp"
+            }
+          }
+        }
+        ```
+      </Step>
+
+      <Step title="Verify the connection">
+        Open a new Composer session. You should see the SearchAPI tools listed in the tool picker.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="VS Code Copilot">
+    VS Code with the GitHub Copilot extension supports MCP servers through workspace or user settings.
+
+    <Steps>
+      <Step title="Open settings">
+        Open your VS Code settings JSON file (`Cmd+Shift+P` → **Preferences: Open User Settings (JSON)**).
+      </Step>
+
+      <Step title="Add the MCP server configuration">
+        Add the following block to your `settings.json`:
+
+        ```json settings.json
+        {
+          "github.copilot.chat.mcp.servers": {
+            "searchapi": {
+              "type": "http",
+              "url": "http://localhost:8000/mcp"
+            }
+          }
+        }
+        ```
+      </Step>
+
+      <Step title="Reload the window">
+        Run **Developer: Reload Window** from the command palette. Copilot Chat will pick up the new MCP server on the next session.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Example: ask Claude to search for papers
+
+Once connected, you can ask Claude to use the `search_papers` tool directly in natural language. For example:
+
+> Search for papers on "transformer architecture" and return the top 5 DOIs.
+
+Claude will call the `search_papers` MCP tool, which hits `GET /search/paper?query=transformer+architecture&limit=5` and returns a list of DOIs. You can then ask Claude to summarize, compare, or fetch the papers.
+
+```
+User: Search for papers on "transformer architecture" and list the top 5 DOIs.
+
+Claude: I'll use the search_papers tool to find relevant academic papers.
+
+[Calling search_papers with query="transformer architecture", limit=5]
+
+Here are the top 5 DOIs for papers on transformer architecture:
+
+1. 10.48550/arXiv.1706.03762 — "Attention Is All You Need"
+2. 10.48550/arXiv.1810.04805 — "BERT: Pre-training of Deep Bidirectional Transformers"
+...
+```
+
+<Note>
+  The MCP endpoint is confirmed at `/mcp`. You can verify this by calling the root endpoint: `GET http://localhost:8000/` returns `{"mcp server": "/mcp"}`.
+</Note>

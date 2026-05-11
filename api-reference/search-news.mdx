@@ -1,0 +1,70 @@
+---
+title: "GET /news/ — search and retrieve news articles"
+description: "Search for recent news articles by topic or keyword using DuckDuckGo's news index and receive an array of URLs to matching articles from news sources."
+---
+
+The `/news/` endpoint uses DuckDuckGo's DDGS news search to surface recent articles from news publishers and returns an array of article URLs. Because DDGS indexes fresh news content, this endpoint is particularly effective for current events, breaking stories, and time-sensitive topics. Results come from major news outlets, blogs, and media publishers.
+
+<Tip>
+  This endpoint is well-suited for building news datasets for LLM fine-tuning, monitoring a topic over time, or feeding a retrieval-augmented generation (RAG) pipeline with fresh information.
+</Tip>
+
+## Request
+
+```
+GET /news/?query={query}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The news search query. Use specific terms, entity names, or event descriptions for focused results. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of article URLs to return.
+</ParamField>
+
+## Response
+
+Returns a JSON array of URL strings on success.
+
+<ResponseField name="[*]" type="string">
+  A URL to a news article from the search results.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/news/?query=open+source+AI+models+2024&limit=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/news/",
+    params={"query": "open source AI models 2024", "limit": 5}
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://techcrunch.com/2024/03/15/meta-releases-llama-3/",
+  "https://www.theverge.com/2024/4/18/open-source-ai-regulation",
+  "https://venturebeat.com/ai/mistral-releases-new-open-source-model/",
+  "https://www.wired.com/story/the-open-source-ai-debate/",
+  "https://arstechnica.com/information-technology/2024/open-source-models-landscape/"
+]
+```
+
+## Error response
+
+```json 500
+{ "error": "News search failed after maximum retries" }
+```

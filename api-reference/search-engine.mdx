@@ -1,0 +1,95 @@
+---
+title: "GET /search/engine — engine-specific web search"
+description: "Search the web using a specific engine such as Bing, Google, DuckDuckGo, or Brave, and receive an array of result URLs from that engine alone."
+---
+
+The `/search/engine` endpoint lets you target a specific search engine instead of letting SearchAPI choose automatically. This is useful when you want results from a particular index — for example, Bing for English-language coverage, Yandex for Russian-language content, or DuckDuckGo for privacy-respecting results. The `engine` parameter must be one of the eight supported values listed below; any other value returns a descriptive error message with HTTP `200`.
+
+<Warning>
+  Google aggressively rate-limits automated search requests. Sending many requests to `engine=google` in a short period is likely to result in CAPTCHAs or blocked responses. Use `engine=duckduckgo` or `engine=bing` for high-volume workloads.
+</Warning>
+
+## Request
+
+```
+GET /search/engine?query={query}&engine={engine}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The search query string. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="engine" type="string" required>
+  The search engine to use. Must be one of: `bing`, `brave`, `duckduckgo`, `google`, `mojeek`, `yandex`, `yahoo`, `wikipedia`.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of URLs to return.
+</ParamField>
+
+## Supported engines
+
+| Value | Engine |
+|-------|--------|
+| `bing` | Microsoft Bing |
+| `brave` | Brave Search |
+| `duckduckgo` | DuckDuckGo |
+| `google` | Google Search |
+| `mojeek` | Mojeek |
+| `yandex` | Yandex |
+| `yahoo` | Yahoo Search |
+| `wikipedia` | Wikipedia search |
+
+## Response
+
+Returns a JSON array of URL strings on success.
+
+<ResponseField name="[*]" type="string">
+  A result URL from the specified search engine.
+</ResponseField>
+
+## Invalid engine behavior
+
+If the `engine` value is not one of the eight supported options, the endpoint returns HTTP `200` with a descriptive message rather than an error status. Always validate the engine value on the client side before making a request.
+
+```json 200 (invalid engine)
+{"Invalid engine: altavista  choose one from ['bing', 'brave', 'duckduckgo', 'google', 'mojeek', 'yandex', 'yahoo', 'wikipedia']"}
+```
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/search/engine?query=transformer+architecture&engine=bing&limit=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/search/engine",
+    params={"query": "transformer architecture", "engine": "bing", "limit": 5}
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://jalammar.github.io/illustrated-transformer/",
+  "https://arxiv.org/abs/1706.03762",
+  "https://huggingface.co/docs/transformers/index",
+  "https://en.wikipedia.org/wiki/Transformer_(machine_learning_model)",
+  "https://pytorch.org/tutorials/beginner/transformer_tutorial.html"
+]
+```
+
+## Error response
+
+```json 400
+{ "error": "Search engine returned an unexpected error" }
+```

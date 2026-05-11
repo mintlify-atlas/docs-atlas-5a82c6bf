@@ -1,0 +1,70 @@
+---
+title: "GET /books/ — search books by title or topic"
+description: "Search for books by title, author, or topic using DuckDuckGo's book search index and receive an array of URLs linking to book pages and listings."
+---
+
+The `/books/` endpoint uses DuckDuckGo's DDGS book search to find book-related results and returns an array of URLs. Results typically include pages from Google Books, Open Library, Goodreads, publisher sites, and online booksellers. This endpoint is useful for gathering book metadata pages, finding reading resources, or building datasets focused on published works.
+
+<Tip>
+  For best results, include both a title and an author name in your query — for example `"Clean Code Robert Martin"` — to narrow results to the specific book rather than topic-related pages.
+</Tip>
+
+## Request
+
+```
+GET /books/?query={query}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The book search query. Can be a title, author name, ISBN, or topic. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of URLs to return.
+</ParamField>
+
+## Response
+
+Returns a JSON array of URL strings on success.
+
+<ResponseField name="[*]" type="string">
+  A URL pointing to a book-related page such as a listing, review, or publisher page.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/books/?query=The+Pragmatic+Programmer+Hunt+Thomas&limit=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/books/",
+    params={"query": "The Pragmatic Programmer Hunt Thomas", "limit": 5}
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://www.amazon.com/Pragmatic-Programmer-journey-mastery-Anniversary/dp/0135957052",
+  "https://openlibrary.org/books/OL7353672M/The_Pragmatic_Programmer",
+  "https://books.google.com/books/about/The_Pragmatic_Programmer.html?id=5wBQEp6ruIAC",
+  "https://www.goodreads.com/book/show/4099.The_Pragmatic_Programmer",
+  "https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/"
+]
+```
+
+## Error response
+
+```json 500
+{ "error": "Book search failed after maximum retries" }
+```

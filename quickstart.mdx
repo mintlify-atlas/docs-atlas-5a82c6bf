@@ -1,81 +1,114 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+title: "SearchAPI quickstart: first call in 5 minutes"
+description: "Run SearchAPI locally with uv or Docker, verify the health endpoint, and make your first web search call — no API key or account needed."
+icon: "bolt"
 ---
 
-## Get started in three steps
+SearchAPI is a self-hostable REST service that returns structured search results over HTTP. This guide walks you through getting the server running and making your first request. You do not need an API key or an account — the service uses DuckDuckGo's meta-search library under the hood.
 
-Get your documentation site running locally and make your first customization.
+## Run SearchAPI
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Start the server">
+    Choose the method that matches your environment.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <CodeGroup>
 
-### Step 2: Deploy your changes
+    ```bash uv (local)
+    git clone https://github.com/Pratyay360/search-api.git
+    cd search-api
+    uv sync
+    uv fastapi run
+    ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash Docker
+    docker pull pratyay360/searchapi
+    docker run -p 8000:8000 pratyay360/searchapi
+    ```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash Podman / podman-compose
+    git clone https://github.com/Pratyay360/search-api.git
+    cd search-api
+    podman-compose up -d
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    </CodeGroup>
 
-### Step 3: Go live
+    The server starts on port `8000` in all cases.
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Verify the server is healthy">
+    Confirm the service is running by calling the health endpoint.
 
-## Next steps
+    ```bash
+    curl http://localhost:8000/health
+    ```
 
-Now that you have your docs running, explore these key features:
+    You should receive:
+
+    ```json
+    {"status": "ok"}
+    ```
+  </Step>
+
+  <Step title="Make your first search call">
+    Call the general web search endpoint with a query and a result limit.
+
+    ```bash
+    curl "http://localhost:8000/search/?query=machine+learning&limit=5"
+    ```
+
+    **Parameters**
+
+    <ParamField query="query" type="string" required>
+      The search query string.
+    </ParamField>
+
+    <ParamField query="limit" type="number" required>
+      Maximum number of URLs to return.
+    </ParamField>
+
+    **Example response**
+
+    ```json
+    [
+      "https://en.wikipedia.org/wiki/Machine_learning",
+      "https://developers.google.com/machine-learning/crash-course",
+      "https://www.coursera.org/specializations/machine-learning-introduction",
+      "https://scikit-learn.org/stable/",
+      "https://pytorch.org/tutorials/"
+    ]
+    ```
+
+    The response is a JSON array of URLs ranked by relevance. You can pipe this output directly into a dataset pipeline or downstream processing script.
+  </Step>
+</Steps>
+
+## Response structure
+
+All search endpoints return a JSON array of strings. Each string is a URL (or a DOI for the `/search/paper` endpoint).
+
+<ResponseField name="[]" type="string[]">
+  An ordered list of result URLs. The length is bounded by the `limit` parameter you supply.
+</ResponseField>
+
+## What to try next
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="All endpoints" icon="code" href="/api-reference/overview">
+    Browse every endpoint — papers, PDFs, books, news, repositories, and more.
+  </Card>
+  <Card title="Deployment options" icon="server" href="/deployment">
+    Deploy to Render, Docker, or Podman for production use.
+  </Card>
+  <Card title="MCP server" icon="robot" href="/guides/mcp-server">
+    Connect SearchAPI directly to Claude or Cursor via MCP.
+  </Card>
+  <Card title="Dataset generation" icon="database" href="/guides/dataset-generation">
+    Strategies for building LLM training datasets with SearchAPI.
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  SearchAPI is intended for educational and research use. You are responsible for complying with the terms of service of any upstream search engine and applicable laws in your jurisdiction.
 </Note>

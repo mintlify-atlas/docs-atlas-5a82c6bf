@@ -1,0 +1,93 @@
+---
+title: "GET /search/specific/ — search files by type"
+description: "Search for files of any type (PDF, DOCX, PPTX, XLSX, and more) by prepending a filetype operator to your query and returning matching file URLs."
+---
+
+The `/search/specific/` endpoint is a generalization of the PDF search endpoint. Instead of hardcoding `filetype:pdf`, it accepts a `filetype` parameter and prepends `filetype:{filetype}` to your query before searching. This lets you find any publicly-indexed file format — spreadsheets, presentations, Word documents, plain text files, and more — with a single endpoint.
+
+<Tip>
+  For PDFs specifically, you can use either this endpoint or [`/searchpdfs/`](/api-reference/search-pdfs). This endpoint is more flexible and supports all filetypes, but note that the limit parameter here is `limit` (without the trailing `s`).
+</Tip>
+
+## Request
+
+```
+GET /search/specific/?query={query}&filetype={filetype}&limit={limit}
+```
+
+## Parameters
+
+<ParamField query="query" type="string" required>
+  The search query. Do not include a `filetype:` operator — this is added automatically. URL-encode spaces as `+` or `%20`.
+</ParamField>
+
+<ParamField query="filetype" type="string" required>
+  The file extension to search for. Common values include `pdf`, `doc`, `docx`, `ppt`, `pptx`, `xls`, `xlsx`, `txt`, `csv`, and `epub`. The value is passed directly to the search engine's `filetype:` operator.
+</ParamField>
+
+<ParamField query="limit" type="integer" required>
+  Maximum number of file URLs to return.
+</ParamField>
+
+## Common filetype values
+
+| Value | Format |
+|-------|--------|
+| `pdf` | PDF documents |
+| `docx` | Microsoft Word (modern) |
+| `doc` | Microsoft Word (legacy) |
+| `pptx` | Microsoft PowerPoint (modern) |
+| `ppt` | Microsoft PowerPoint (legacy) |
+| `xlsx` | Microsoft Excel (modern) |
+| `xls` | Microsoft Excel (legacy) |
+| `csv` | Comma-separated values |
+| `txt` | Plain text |
+| `epub` | eBook format |
+
+## Response
+
+Returns a JSON array of URL strings pointing to files of the requested type on success.
+
+<ResponseField name="[*]" type="string">
+  A URL to a file matching the specified filetype.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash curl
+curl "http://localhost:8000/search/specific/?query=quarterly+earnings+report&filetype=xlsx&limit=5"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/search/specific/",
+    params={
+        "query": "quarterly earnings report",
+        "filetype": "xlsx",
+        "limit": 5
+    }
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+```json Response
+[
+  "https://example.com/reports/Q1-2024-earnings.xlsx",
+  "https://investor.acmecorp.com/downloads/annual-report-2023.xlsx",
+  "https://data.gov/dataset/financial-report-2024.xlsx",
+  "https://company.example.org/financials/q3-results.xlsx",
+  "https://opendata.example.net/budget/municipality-2024.xlsx"
+]
+```
+
+## Error response
+
+```json 500
+{ "error": "Filetype search failed" }
+```

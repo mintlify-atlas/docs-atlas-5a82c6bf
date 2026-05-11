@@ -1,0 +1,81 @@
+---
+title: "SearchAPI: Programmable web search for LLM datasets"
+description: "SearchAPI is a self-hostable FastAPI REST service for web, academic, PDF, book, news, and repository searches — designed for LLM dataset generation."
+---
+
+SearchAPI is a lightweight, self-hostable REST API that wraps DuckDuckGo's meta-search engine (DDGS) and the Crossref academic index to deliver structured search results over HTTP. It was built to solve a specific problem: collecting large volumes of relevant URLs across different content types (web pages, PDFs, research papers, books, news articles, GitHub repositories) for building LLM fine-tuning datasets — without hitting paywalls or rate limits from proprietary search APIs.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Make your first API call in under 5 minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Browse all endpoints with parameters and examples
+  </Card>
+  <Card title="MCP Server" icon="robot" href="/guides/mcp-server">
+    Connect SearchAPI to Claude, Cursor, and other AI assistants
+  </Card>
+  <Card title="Dataset Generation" icon="database" href="/guides/dataset-generation">
+    Strategies for building LLM training datasets
+  </Card>
+</CardGroup>
+
+## What SearchAPI provides
+
+SearchAPI exposes a set of focused endpoints, each targeting a different content type. All endpoints return arrays of URLs (or DOIs for papers) as JSON, making them easy to integrate into data pipelines, scripts, or AI agent workflows.
+
+<CardGroup cols={2}>
+  <Card title="Web search" icon="globe" href="/api-reference/search">
+    General-purpose meta-search across multiple engines
+  </Card>
+  <Card title="Engine-specific search" icon="magnifying-glass" href="/api-reference/search-engine">
+    Target Bing, Google, DuckDuckGo, Brave, Yandex, and more
+  </Card>
+  <Card title="Research papers" icon="graduation-cap" href="/api-reference/search-papers">
+    Academic paper search via Crossref, returns DOIs
+  </Card>
+  <Card title="Books" icon="book" href="/api-reference/search-books">
+    Book search returning direct URLs
+  </Card>
+  <Card title="News" icon="newspaper" href="/api-reference/search-news">
+    Current news articles by topic
+  </Card>
+  <Card title="PDFs & filetypes" icon="file-pdf" href="/api-reference/search-pdfs">
+    Search for PDFs, DOCX, PPTX, and any filetype
+  </Card>
+  <Card title="Repositories" icon="code-branch" href="/api-reference/search-repositories">
+    Find GitHub and GitLab repositories
+  </Card>
+  <Card title="Wikipedia & Wikimedia" icon="wikipedia-w" href="/api-reference/search-wiki">
+    Aggregated results from Wikipedia and related Wikimedia sites
+  </Card>
+</CardGroup>
+
+## Key characteristics
+
+- **No API key required** — SearchAPI uses DuckDuckGo's DDGS library under the hood. No account, no billing, no quota management on your end.
+- **MCP server built in** — The same endpoints are also available as MCP tools, letting AI assistants like Claude call them directly.
+- **Docker and Podman ready** — A single `podman-compose up -d` starts the service. A prebuilt Docker image is available on Docker Hub.
+- **One-click Render deploy** — The included `render.yaml` configures automatic deployment on Render's free tier.
+- **CORS open by default** — All origins, methods, and headers are permitted out of the box, so you can call the API from any frontend or script.
+
+## Getting started
+
+<Steps>
+  <Step title="Deploy or run locally">
+    Pull and start the container, or clone the repo and run with `uv fastapi run`. See the [deployment guide](/deployment) for all options.
+  </Step>
+  <Step title="Make your first search call">
+    Call `GET /search/?query=machine+learning&limit=10` to get a list of URLs. See the [quickstart](/quickstart) for a full walkthrough.
+  </Step>
+  <Step title="Automate your data collection">
+    Use the endpoint that matches your content type — papers, PDFs, news, books, or repositories — and pipe the results into your dataset pipeline.
+  </Step>
+  <Step title="Optionally connect to an AI assistant">
+    Mount the MCP server and give Claude or Cursor direct access to all search tools. See the [MCP server guide](/guides/mcp-server).
+  </Step>
+</Steps>
+
+<Note>
+  SearchAPI is intended for educational and research use. You are responsible for complying with the terms of service of any upstream search engine and applicable laws in your jurisdiction.
+</Note>

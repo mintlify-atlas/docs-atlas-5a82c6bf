@@ -1,0 +1,221 @@
+---
+title: "Collect LLM training data using SearchAPI endpoints"
+description: "Use SearchAPI to gather URLs across web pages, papers, PDFs, books, news, and repositories and build diverse domain-specific datasets for LLM fine-tuning."
+icon: "database"
+---
+
+SearchAPI was built for one primary use case: collecting large volumes of relevant URLs across a domain to assemble LLM fine-tuning datasets. The workflow is straightforward — pick a topic, call the endpoints that match the content types you need, deduplicate the results, and feed the URLs into a downloader or content extractor. This guide walks through that workflow with concrete examples.
+
+## Strategy overview
+
+A good fine-tuning dataset draws from multiple content types. Different endpoints serve different purposes:
+
+| Endpoint | Content type | Best for |
+|---|---|---|
+| `GET /search/` | Web pages | General knowledge, tutorials, documentation |
+| `GET /search/paper` | Academic papers (DOIs) | Technical depth, citations, research findings |
+| `GET /searchpdfs/` | PDF documents | Reports, whitepapers, books in PDF form |
+| `GET /books/` | Books | Long-form content, structured knowledge |
+| `GET /news/` | News articles | Current events, recent developments |
+| `GET /search/specific/` | Any filetype | Domain-specific documents (docx, pptx, xlsx) |
+| `GET /repositories/` | GitHub + GitLab repos | Code, READMEs, examples |
+
+<Tip>
+  Use `GET /search/` (the general endpoint) rather than `GET /search/engine` when collecting at scale. The general endpoint rotates search engines randomly, distributing load and reducing the chance of any single engine blocking your requests.
+</Tip>
+
+## Collect URLs with Python
+
+The following script collects URLs across several content types for a given topic. It uses the `requests` library and writes deduplicated results to a file.
+
+```python collect_dataset_urls.py
+import requests
+import time
+
+BASE_URL = "http://localhost:8000"
+TOPIC = "transformer architecture"
+LIMIT = 20
+DELAY = 2  # seconds between requests — be polite to upstream engines
+
+
+def fetch(path: str, params: dict) -> list[str]:
+    try:
+        response = requests.get(f"{BASE_URL}{path}", params=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Request to {path} failed: {e}")
+        return []
+
+
+all_urls: list[str] = []
+
+# General web pages
+web = fetch("/search/", {"query": TOPIC, "limit": LIMIT})
+print(f"Web: {len(web)} results")
+all_urls.extend(web)
+time.sleep(DELAY)
+
+# Academic papers (returns DOIs — resolve to https://doi.org/<doi> for full URLs)
+papers = fetch("/search/paper", {"query": TOPIC, "limit": LIMIT})
+paper_urls = [f"https://doi.org/{doi}" for doi in papers if doi != "No URL"]
+print(f"Papers: {len(paper_urls)} results")
+all_urls.extend(paper_urls)
+time.sleep(DELAY)
+
+# PDFs
+pdfs = fetch("/searchpdfs/", {"query": TOPIC, "limits": LIMIT})
+print(f"PDFs: {len(pdfs)} results")
+all_urls.extend(pdfs)
+time.sleep(DELAY)
+
+# News articles
+news = fetch("/news/", {"query": TOPIC, "limit": LIMIT})
+print(f"News: {len(news)} results")
+all_urls.extend(news)
+time.sleep(DELAY)
+
+# Repositories
+repos = fetch("/repositories/", {"query": TOPIC, "limit": LIMIT})
+print(f"Repositories: {len(repos)} results")
+all_urls.extend(repos)
+time.sleep(DELAY)
+
+# Deduplicate while preserving order
+seen: set[str] = set()
+unique_urls: list[str] = []
+for url in all_urls:
+    if url not in seen and url != "No URL":
+        seen.add(url)
+        unique_urls.append(url)
+
+print(f"\nTotal unique URLs: {len(unique_urls)}")
+
+with open("dataset_urls.txt", "w") as f:
+    for url in unique_urls:
+        f.write(url + "\n")
+
+print("Saved to dataset_urls.txt")
+```
+
+## Improve diversity with multiple queries
+
+A single query rarely covers a domain fully. Run several related queries and combine the results.
+
+```python multi_query.py
+import requests
+import time
+
+BASE_URL = "http://localhost:8000"
+DELAY = 2
+
+QUERIES = [
+    "transformer architecture",
+    "self-attention mechanism",
+    "BERT pre-training",
+    "GPT language model",
+    "vision transformer ViT",
+]
+
+all_urls: list[str] = []
+
+for query in QUERIES:
+    response = requests.get(
+        f"{BASE_URL}/search/",
+        params={"query": query, "limit": 15},
+        timeout=30,
+    )
+    if response.ok:
+        all_urls.extend(response.json())
+        print(f"'{query}': {len(response.json())} results")
+    time.sleep(DELAY)
+
+unique_urls = list(dict.fromkeys(u for u in all_urls if u != "No URL"))
+print(f"\nTotal unique URLs across all queries: {len(unique_urls)}")
+```
+
+## Collect domain-specific documents
+
+For structured documents — slide decks, reports, spreadsheets — use the filetype endpoint.
+
+```bash
+# Collect PowerPoint presentations on transformer architecture
+curl "http://localhost:8000/search/specific/?query=transformer+architecture&filetype=pptx&limit=20"
+
+# Collect Word documents
+curl "http://localhost:8000/search/specific/?query=transformer+architecture&filetype=docx&limit=20"
+```
+
+```python filetype_collection.py
+import requests
+
+BASE_URL = "http://localhost:8000"
+TOPIC = "transformer architecture"
+FILETYPES = ["pptx", "docx", "pdf"]
+
+for filetype in FILETYPES:
+    response = requests.get(
+        f"{BASE_URL}/search/specific/",
+        params={"query": TOPIC, "filetype": filetype, "limit": 20},
+        timeout=30,
+    )
+    if response.ok:
+        urls = response.json()
+        print(f"{filetype}: {len(urls)} results")
+        for url in urls:
+            print(f"  {url}")
+```
+
+## Combine results and deduplicate
+
+After collecting from multiple endpoints and queries, deduplicate before downloading content. The order-preserving approach below keeps the first occurrence of each URL.
+
+```python deduplicate.py
+def deduplicate(urls: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for url in urls:
+        if url not in seen and url != "No URL":
+            seen.add(url)
+            result.append(url)
+    return result
+```
+
+<Note>
+  The `/search/paper` endpoint returns DOIs, not direct URLs. Prepend `https://doi.org/` to resolve them to full paper URLs, or use the DOI directly to fetch metadata from the Crossref API.
+</Note>
+
+## Example curl commands
+
+```bash
+# Web pages
+curl "http://localhost:8000/search/?query=transformer+architecture&limit=20"
+
+# Academic papers (returns DOIs)
+curl "http://localhost:8000/search/paper?query=transformer+architecture&limit=20"
+
+# PDFs
+curl "http://localhost:8000/searchpdfs/?query=transformer+architecture&limits=20"
+
+# Books
+curl "http://localhost:8000/books/?query=transformer+architecture&limit=20"
+
+# News
+curl "http://localhost:8000/news/?query=transformer+architecture&limit=20"
+
+# Repositories
+curl "http://localhost:8000/repositories/?query=transformer+architecture&limit=20"
+
+# Wikipedia and Wikimedia
+curl "http://localhost:8000/wiki/?query=transformer+architecture&limit=20"
+```
+
+## What to do with the URLs
+
+Once you have a list of URLs, the next step is downloading and extracting content. Common tools include:
+
+- **[trafilatura](https://trafilatura.readthedocs.io)** — extracts clean text from web pages
+- **[pypdf](https://pypdf.readthedocs.io)** — extracts text from PDF files
+- **[requests](https://docs.python-requests.org)** + **[BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/)** — for custom HTML extraction
+
+Feed the extracted text into your fine-tuning pipeline after cleaning and formatting to your target schema.
